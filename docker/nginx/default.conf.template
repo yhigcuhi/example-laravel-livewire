@@ -5,7 +5,7 @@ server {
 
   # log
   access_log /var/log/nginx/access.log;
-  error_log /var/log/nginx/error.log;
+  error_log /var/log/nginx/error.log warn;
 
   # 共通ヘッダー: セキュリティ対策
   include /etc/nginx/conf.d/security/*.conf;
