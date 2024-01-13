@@ -1,0 +1,80 @@
+# docker compose versionとしての書き方のあれ
+version: "3.8"
+
+# 利用する コンテナ 一覧
+services:
+  # web app
+  app:
+    # 管理コンテナ名
+    container_name: ${APP_NAME}-app
+    # Dockerファイルにて 定義
+    build: ./docker/laravel
+    # ホスト名指定
+    hostname: app
+    # 場所
+    volumes:
+      - ./laravel-src/:/var/www/html
+    # 利用ポート
+    ports:
+      # 一旦 フロントエンド vite使う感じで
+      - ${VITE_PORT:-3000}:5173
+    # 環境設定値設定
+    environment:
+      # アプリ系
+      - APP_NAME=${APP_NAME}
+      - APP_URL=${APP_URL:-http://localhost:8080}
+      - APP_ENV=${APP_ENV:-local}
+      # DB 接続定義
+      - DB_CONNECTION=${DB_CONNECTION:-mysql}
+      - DB_HOST=${DB_HOST:-db}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_DATABASE=${DB_DATABASE:-business}
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-password}
+  # WEBサーバー
+  web:
+    # 管理コンテナ名
+    container_name: ${APP_NAME}-web
+    # Dockerファイルにて 定義
+    build: ./docker/nginx
+    # 利用ポート
+    ports:
+      - ${WEB_PORT:-8080}:80
+    # 依存関係
+    depends_on:
+      - app
+    # 場所
+    volumes:
+      - ./laravel-src/:/var/www/html
+    # 環境設定値
+    environment:
+      # nginx 対応 ホスト名(一旦コンテナごと)
+      - PHP_APP_HOST=app
+    # コマンド
+    # defaut.conf内容書き換え
+    command: /bin/sh -c "envsubst '$$PHP_APP_HOST' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+  # db
+  db:
+    # 管理コンテナ名
+    container_name: ${APP_NAME}-db
+    # Dockerファイルにて 定義
+    build: ./docker/mysql
+    # ホスト名指定
+    hostname: ${DB_HOST:-db}
+    # 利用ポート
+    ports:
+      - ${DB_PORT:-3306}:3306
+    # 環境オプション
+    environment:
+      TZ: "Asia/Tokyo"
+      MYSQL_DATABASE: ${DB_DATABASE:-sample_db}
+      MYSQL_USER: ${DB_USERNAME:-user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-zaq12wsx}
+      # rootも面倒なので同じに
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-zaq12wsx}
+    # マウント
+    volumes:
+      # DBのデータ保存先
+      - ./docker/mysql/db/data:/var/lib/mysql
+      - ./docker/mysql/conf:/etc/mysql/conf.d
+    restart: always
